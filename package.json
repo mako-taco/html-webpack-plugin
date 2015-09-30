@@ -1,5 +1,5 @@
 {
-  "name": "html-webpack-plugin",
+  "name": "html-source-webpack-plugin",
   "version": "1.6.1",
   "description": "Simplifies creation of HTML files to serve your webpack bundles",
   "main": "index.js",
@@ -14,7 +14,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ampedandwired/html-webpack-plugin.git"
+    "url": "https://github.com/mako-taco/html-webpack-plugin.git"
   },
   "keywords": [
     "webpack",
@@ -22,23 +22,12 @@
     "html",
     "generate"
   ],
-  "author": "Charles Blaxland <charles.blaxland@gmail.com> (https://github.com/ampedandwired)",
+  "author": "Jake Scott",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/ampedandwired/html-webpack-plugin/issues"
+    "url": "https://github.com/mako-taco/html-webpack-plugin/issues"
   },
-  "homepage": "https://github.com/ampedandwired/html-webpack-plugin",
-  "devDependencies": {
-    "css-loader": "^0.15.4",
-    "extract-text-webpack-plugin": "^0.8.2",
-    "file-loader": "^0.8.4",
-    "jasmine-node": "^2.0.0",
-    "jshint": "^2.8.0",
-    "rimraf": "^2.4.1",
-    "style-loader": "^0.12.3",
-    "url-loader": "^0.5.6",
-    "webpack": "^1.10.1"
-  },
+  "homepage": "https://github.com/mako-taco/html-webpack-plugin",
   "dependencies": {
     "bluebird": "^2.9.34",
     "blueimp-tmpl": "^2.5.4",

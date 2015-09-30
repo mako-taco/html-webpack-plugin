@@ -1,9 +1,9 @@
 'use strict';
 var fs = require('fs');
 var path = require('path');
- var urlModule = require('url');
 var _ = require('lodash');
 var tmpl = require('blueimp-tmpl').tmpl;
+
 var Promise = require('bluebird');
 Promise.promisifyAll(fs);
 
@@ -16,6 +16,9 @@ HtmlWebpackPlugin.prototype.apply = function(compiler) {
   compiler.plugin('emit', function(compilation, compileCallback) {
     var webpackStatsJson = compilation.getStats().toJson();
     var outputFilename = self.options.filename || 'index.html';
+
+
+
     Promise.resolve()
       // Add the favicon
       .then(function(callback) {
@@ -23,16 +26,52 @@ HtmlWebpackPlugin.prototype.apply = function(compiler) {
           return self.addFileToAssets(compilation, self.options.favicon, callback);
         }
       })
+      .then(function () {
+        return new Promise(function (resolve) {
+          function setOutputFilename() {
+            if (global.IFRAME_LOADER[self.options.iframeLoaderID]) {
+              outputFilename = global.IFRAME_LOADER[self.options.iframeLoaderID];
+              global.IFRAME_LOADER[self.options.iframeLoaderID] = null;
+              resolve();
+            }
+            else {
+              setTimeout(setOutputFilename);
+            }
+          }
+
+          if (self.options.iframeLoaderID) {
+            setOutputFilename();
+          }
+          else {
+            resolve();
+          }
+        });
+      })
       // Generate the html
       .then(function() {
+        var entryPoints = Object.keys(compilation.options.entry);
+        var entryAssets = entryPoints.map(function (entry) {
+          var asset = webpackStatsJson.assetsByChunkName[entry];
+          if (Array.isArray(asset)) {
+            return webpackStatsJson.assetsByChunkName[entry][0];
+          }
+          else {
+            return webpackStatsJson.assetsByChunkName[entry];
+          }
+        });
+
         var templateParams = {
           webpack: webpackStatsJson,
           webpackConfig: compilation.options,
           htmlWebpackPlugin: {
             files: self.htmlWebpackPluginAssets(compilation, webpackStatsJson, self.options.chunks, self.options.excludeChunks),
             options: self.options,
+            source: entryAssets.map(function (asset) {
+              return compilation.assets[asset].source() + '\n';
+            }).join('')
           }
         };
+
         // Deprecate templateParams.htmlWebpackPlugin.assets
         var assets = self.htmlWebpackPluginLegacyAssets(compilation, webpackStatsJson);
         Object.defineProperty(templateParams.htmlWebpackPlugin, 'assets', {
@@ -102,8 +141,6 @@ HtmlWebpackPlugin.prototype.getTemplateContent = function(compilation, templateP
   if (!templateFile) {
     // Use a special index file to prevent double script / style injection if the `inject` option is truthy
     templateFile = path.join(__dirname, self.options.inject ? 'default_inject_index.html' : 'default_index.html');
-  } else {
-    templateFile = path.normalize(templateFile);
   }
   compilation.fileDependencies.push(templateFile);
   return fs.readFileAsync(templateFile, 'utf8')
@@ -120,7 +157,7 @@ HtmlWebpackPlugin.prototype.emitHtml = function(compilation, htmlTemplateContent
   var html;
   // blueimp-tmpl processing
   try {
-    html = tmpl(htmlTemplateContent, templateParams);
+    html = tmpl(htmlTemplateContent.replace(/\n/g, ''), templateParams);
   } catch(e) {
     return Promise.reject(new Error('HtmlWebpackPlugin: template error ' + e));
   }
@@ -133,7 +170,9 @@ HtmlWebpackPlugin.prototype.emitHtml = function(compilation, htmlTemplateContent
   // Minify the html output
   if (this.options.minify) {
     var minify = require('html-minifier').minify;
-    html = minify(html, this.options.minify);
+    // If `options.minify` is set to true use the default minify options
+    var minifyOptions = _.isObject(this.options.minify) ? this.options.minify : {};
+    html = minify(html, minifyOptions);
   }
 
   compilation.assets[outputFilename] = {
@@ -179,7 +218,7 @@ HtmlWebpackPlugin.prototype.htmlWebpackPluginAssets = function(compilation, webp
       path.relative(path.dirname(self.options.filename), '.');
 
   if (publicPath.length && publicPath.substr(-1, 1) !== '/') {
-    publicPath = path.join(urlModule.resolve(publicPath + '/', '.'), '/');
+    publicPath += '/';
   }
 
   var assets = {
